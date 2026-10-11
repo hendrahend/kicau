@@ -1,0 +1,3 @@
+# Runtime: numpy + LiteRT interpreter (no TensorFlow needed)
+ai-edge-litert
+numpy

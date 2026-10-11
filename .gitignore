@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.venv/
+model/*.tflite
+model/*.zip
+.pytest_cache/

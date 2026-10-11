@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kicau — Pengenal Suara Burung Offline</title>
+<style>
+  :root{
+    --bg:#0e1512; --card:#182420; --card2:#1f2f27;
+    --ink:#eef5ee; --dim:#9fb3a4; --line:#2a3b31;
+    --acc:#7bc96f; --acc-dk:#0c130e; --amber:#e8b44a; --red:#e05252;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+       font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:620px;margin:0 auto;padding:28px 18px 72px}
+  header{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+  .logo{width:52px;height:52px;border-radius:16px;background:var(--acc);
+        display:flex;align-items:center;justify-content:center;flex:none}
+  .logo svg{width:32px;height:32px;fill:var(--acc-dk)}
+  h1{font-size:30px;letter-spacing:.5px}
+  .tag{color:var(--dim);font-size:14px;margin:2px 0 18px}
+  .badge{display:inline-flex;align-items:center;gap:7px;background:var(--card);
+         border:1px solid var(--line);color:var(--acc);font-weight:700;font-size:12px;
+         padding:7px 13px;border-radius:999px;margin-bottom:22px;letter-spacing:.4px}
+  .badge .dot{width:8px;height:8px;border-radius:50%;background:var(--acc)}
+  .tabs{display:flex;gap:10px;margin-bottom:16px}
+  .tabs button{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;
+    padding:13px;border-radius:12px;border:1px solid var(--line);background:var(--card);
+    color:var(--ink);font-size:15px;font-weight:600;cursor:pointer}
+  .tabs button svg{width:18px;height:18px;fill:currentColor}
+  .tabs button.on{background:var(--acc);color:var(--acc-dk);border-color:var(--acc)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+        padding:20px;margin-bottom:14px}
+  .recbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;
+    padding:17px;border-radius:14px;border:none;font-size:17px;font-weight:700;
+    cursor:pointer;background:var(--acc);color:var(--acc-dk)}
+  .recbtn svg{width:20px;height:20px;fill:currentColor}
+  .recbtn.stop{background:var(--red);color:#fff}
+  .recbtn:disabled{opacity:.55;cursor:wait}
+  .recbtn.recording{animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(.985)}}
+  #timer{text-align:center;font-size:14px;color:var(--dim);margin-top:10px;min-height:20px;
+         font-variant-numeric:tabular-nums}
+  input[type=file]{width:100%;padding:12px;background:var(--card2);border:1px dashed var(--line);
+    border-radius:12px;color:var(--dim);font-size:14px;cursor:pointer}
+  input[type=file]::file-selector-button{background:var(--acc);color:var(--acc-dk);border:none;
+    border-radius:8px;padding:8px 14px;font-weight:700;margin-right:12px;cursor:pointer}
+  .hint{font-size:13px;color:var(--dim);margin-top:12px;line-height:1.6}
+  .err{background:#3a1d1d;color:#ffb4b4;border-radius:12px;padding:14px 16px;display:none;
+       margin-bottom:14px;font-size:14px}
+  .res{display:none}
+  .res h2{font-size:19px;margin:6px 0 14px}
+  .sp{background:var(--card);border:1px solid var(--line);border-radius:14px;
+      padding:15px 16px;margin-bottom:10px;display:flex;gap:13px;align-items:flex-start}
+  .rank{flex:none;width:34px;height:34px;border-radius:10px;background:var(--card2);
+        color:var(--amber);font-weight:800;display:flex;align-items:center;
+        justify-content:center;font-size:16px}
+  .sp .body{flex:1;min-width:0}
+  .sp .nm{font-size:17px;font-weight:700}
+  .sp .sci{font-style:italic;color:var(--dim);font-size:13px;margin-top:2px}
+  .bar{height:8px;background:var(--acc-dk);border-radius:99px;margin-top:10px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--acc);border-radius:99px}
+  .meta{font-size:12.5px;color:var(--dim);margin-top:7px}
+  .tl{margin:4px 0 16px}
+  .tl .lbl{font-size:12.5px;color:var(--dim);margin-bottom:8px}
+  .tl .strip{display:flex;gap:4px}
+  .tl .seg{flex:1;height:38px;border-radius:7px;background:var(--card2);
+           display:flex;align-items:center;justify-content:center;overflow:hidden;
+           border:1px solid var(--line)}
+  .tl .seg.hit{background:var(--acc)}
+  .tl .seg span{font-size:11px;font-weight:700;color:var(--acc-dk);white-space:nowrap}
+  .tl .seg:not(.hit) span{color:var(--dim);font-weight:400}
+  audio{width:100%;margin-top:4px;accent-color:var(--acc)}
+  .cap{font-size:12.5px;color:var(--dim);margin:10px 0 4px}
+  .foot{margin-top:30px;font-size:13px;color:var(--dim);line-height:1.7;
+        border-top:1px solid var(--line);padding-top:20px}
+  .foot b{color:var(--ink)}
+  .lang{margin-left:auto;display:flex;gap:6px;flex:none}
+  .lang button{background:var(--card);border:1px solid var(--line);color:var(--dim);
+    font-size:12px;font-weight:700;padding:7px 11px;border-radius:999px;cursor:pointer}
+  .lang button.on{background:var(--acc);border-color:var(--acc);color:var(--acc-dk)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M21 8.5c-.7 0-1.4.1-2 .3A6.5 6.5 0 0 0 12.5 3c-3 0-5.5 2-6.2 4.7A4.5 4.5 0 0 0 2 12c0 2.5 2 4.5 4.5 4.5.4 0 .8-.1 1.2-.2.9 1.3 2.4 2.2 4.1 2.2 2.8 0 5-2.2 5-5 0-.3 0-.6-.1-.9.7-.5 1.3-1.3 1.3-2.1M7 13.5A1.5 1.5 0 1 1 8.5 12 1.5 1.5 0 0 1 7 13.5Z"/></svg>
+    </div>
+    <div>
+      <h1>Kicau</h1>
+      <div class="tag" data-i18n="tag">Pengenal suara burung — tanpa internet</div>
+    </div>
+    <div class="lang" role="group" aria-label="Language / Bahasa">
+      <button id="langEn" onclick="setLang('en')">EN</button>
+      <button id="langId" onclick="setLang('id')">ID</button>
+    </div>
+  </header>
+
+  <div class="badge"><span class="dot"></span><span data-i18n="badge">100% OFFLINE &middot; MODEL DI PERANGKAT INI</span></div>
+
+  <div class="tabs">
+    <button id="tabRec" class="on" onclick="showTab('rec')">
+      <svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4Zm6-4a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V21h2v-2.06A8 8 0 0 0 20 11h-2Z"/></svg>
+      <span data-i18n="tabRec">Rekam</span></button>
+    <button id="tabUp" onclick="showTab('up')">
+      <svg viewBox="0 0 24 24"><path d="M12 3l5 5h-3v6h-4V8H7l5-5ZM5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2h-2v2H7v-2H5Z"/></svg>
+      <span data-i18n="tabUp">Unggah</span></button>
+  </div>
+
+  <div class="card" id="paneRec">
+    <button class="recbtn" id="recBtn" onclick="toggleRec()">
+      <svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4Zm6-4a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.94V21h2v-2.06A8 8 0 0 0 20 11h-2Z"/></svg>
+      <span id="recLbl" data-i18n="recStart">Mulai merekam</span>
+    </button>
+    <div id="timer"></div>
+    <p class="hint" data-i18n="hintRec">Rekam 5&ndash;30 detik dekat sumber suara. Pagi hari, jauh dari jalan raya = hasil terbaik.</p>
+  </div>
+
+  <div class="card" id="paneUp" style="display:none">
+    <input type="file" id="fileInp" accept="audio/*" onchange="uploadFile(this.files[0])">
+    <p class="hint" data-i18n="hintUp">Format: wav, mp3, m4a, ogg, webm. Maks 50 MB.</p>
+  </div>
+
+  <div class="err" id="err"></div>
+
+  <div class="res" id="res">
+    <h2 data-i18n="resTitle">Hasil identifikasi</h2>
+    <div class="tl" id="tl" style="display:none">
+      <div class="lbl" data-i18n="tlLabel">Linimasa rekaman (per 3 detik)</div>
+      <div class="strip" id="strip"></div>
+    </div>
+    <div id="list"></div>
+    <div class="cap" id="playCap" style="display:none" data-i18n="playCap">Dengarkan lagi rekamanmu:</div>
+    <audio id="player" controls style="display:none"></audio>
+    <p class="meta" id="sumMeta" style="margin-top:12px"></p>
+  </div>
+
+  <div class="foot">
+    <b data-i18n="footTitle">Cara pakai di lapangan:</b> <span data-i18n="footBody">buka halaman ini sekali saat ada internet,
+    biarkan tab terbuka &mdash; modelnya sudah dimuat di perangkat, jadi di hutan
+    tanpa sinyal pun tetap jalan.</span><br><br>
+    <span data-i18n="footModel">Model: BirdNET v2.4 (open weights, 6.522 spesies) oleh Cornell Lab of
+    Ornithology &amp; TU Chemnitz. Kode aplikasi: MIT.</span>
+  </div>
+</div>
+
+<script>
+let mr=null,chunks=[],recStart=0,timerId=null,lastBlobUrl=null;
+let lang=localStorage.getItem('kicau-lang')||'en';
+
+const STR={
+en:{
+  title:'Kicau \u2014 Offline Bird Call Identifier',
+  tag:'Offline bird-call identifier',
+  badge:'100% OFFLINE \u00b7 ON-DEVICE MODEL',
+  tabRec:'Record', tabUp:'Upload',
+  recStart:'Start recording', recStop:'Stop & identify', recBusy:'Analyzing...',
+  hintRec:'Record 5\u201330 seconds close to the sound. Early morning, away from roads = best results.',
+  hintUp:'Formats: wav, mp3, m4a, ogg, webm. Max 50 MB.',
+  resTitle:'Identification results', tlLabel:'Recording timeline (per 3 seconds)',
+  playCap:'Listen to your recording again:',
+  noBird:'No birds detected confidently. Try recording closer or longer.',
+  cardMeta:(p,at)=>`${p}% confident \u00b7 heard at ${at}s`,
+  sumMeta:(f,d,n)=>`${f} \u00b7 ${d} seconds \u00b7 ${n} segments analyzed`,
+  recTimer:s=>`Recording... ${s}s`,
+  footTitle:'Field tip:',
+  footBody:'open this page once while online, keep the tab open \u2014 the model is already on your device, so it keeps working in the forest with zero signal.',
+  footModel:'Model: BirdNET v2.4 (open weights, 6,522 species) by Cornell Lab of Ornithology & TU Chemnitz. App code: MIT.',
+  errMic:e=>'Can\u2019t access microphone: '+e,
+  errFail:e=>'Failed: '+e,
+},
+id:{
+  title:'Kicau \u2014 Pengenal Suara Burung Offline',
+  tag:'Pengenal suara burung \u2014 tanpa internet',
+  badge:'100% OFFLINE \u00b7 MODEL DI PERANGKAT INI',
+  tabRec:'Rekam', tabUp:'Unggah',
+  recStart:'Mulai merekam', recStop:'Berhenti & identifikasi', recBusy:'Menganalisis...',
+  hintRec:'Rekam 5\u201330 detik dekat sumber suara. Pagi hari, jauh dari jalan raya = hasil terbaik.',
+  hintUp:'Format: wav, mp3, m4a, ogg, webm. Maks 50 MB.',
+  resTitle:'Hasil identifikasi', tlLabel:'Linimasa rekaman (per 3 detik)',
+  playCap:'Dengarkan lagi rekamanmu:',
+  noBird:'Tidak ada burung terdeteksi dengan yakin. Coba rekam lebih dekat atau lebih lama.',
+  cardMeta:(p,at)=>`${p}% yakin \u00b7 terdengar di detik ${at}`,
+  sumMeta:(f,d,n)=>`${f} \u00b7 ${d} detik \u00b7 ${n} segmen dianalisis`,
+  recTimer:s=>`Merekam... ${s} dtk`,
+  footTitle:'Cara pakai di lapangan:',
+  footBody:'buka halaman ini sekali saat ada internet, biarkan tab terbuka \u2014 modelnya sudah dimuat di perangkat, jadi di hutan tanpa sinyal pun tetap jalan.',
+  footModel:'Model: BirdNET v2.4 (open weights, 6.522 spesies) oleh Cornell Lab of Ornithology & TU Chemnitz. Kode aplikasi: MIT.',
+  errMic:e=>'Tidak bisa akses mikrofon: '+e,
+  errFail:e=>'Gagal: '+e,
+}};
+const T=()=>STR[lang];
+
+function setLang(l){
+  lang=(l==='id')?'id':'en';
+  localStorage.setItem('kicau-lang',lang);
+  document.documentElement.lang=lang==='id'?'id':'en';
+  document.title=T().title;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k=el.getAttribute('data-i18n');
+    if(T()[k]!==undefined) el.innerHTML=T()[k];
+  });
+  document.getElementById('langEn').classList.toggle('on',lang==='en');
+  document.getElementById('langId').classList.toggle('on',lang==='id');
+  // reset record button label to idle state in the new language
+  const lbl=document.getElementById('recLbl');
+  if(lbl&&!document.getElementById('recBtn').disabled) lbl.textContent=T().recStart;
+}
+
+function showTab(t){
+  document.getElementById('tabRec').classList.toggle('on',t==='rec');
+  document.getElementById('tabUp').classList.toggle('on',t==='up');
+  document.getElementById('paneRec').style.display=t==='rec'?'':'none';
+  document.getElementById('paneUp').style.display=t==='up'?'':'none';
+}
+function showErr(m){const e=document.getElementById('err');e.style.display='block';e.textContent=m;}
+function clearErr(){document.getElementById('err').style.display='none';}
+function setBtn(mode){ // mode: idle | busy | stop
+  const b=document.getElementById('recBtn'),l=document.getElementById('recLbl');
+  l.textContent=mode==='stop'?T().recStop:mode==='busy'?T().recBusy:T().recStart;
+  b.classList.toggle('stop',mode==='stop');
+  b.classList.toggle('recording',mode==='stop');
+  b.disabled=mode==='busy';
+}
+
+async function toggleRec(){
+  if(mr&&mr.state==='recording'){mr.stop();return;}
+  clearErr();
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    chunks=[];mr=new MediaRecorder(stream);
+    mr.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+    mr.onstop=()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      clearInterval(timerId);document.getElementById('timer').textContent='';
+      setBtn('idle');
+      uploadBlob(new Blob(chunks,{type:mr.mimeType||'audio/webm'}),'rekaman.webm');
+    };
+    mr.start();recStart=Date.now();setBtn('stop');
+    timerId=setInterval(()=>{
+      document.getElementById('timer').textContent=
+        T().recTimer(Math.floor((Date.now()-recStart)/1000));
+    },500);
+  }catch(e){showErr(T().errMic(e.message));}
+}
+function uploadFile(f){if(f)uploadBlob(f,f.name);}
+
+async function uploadBlob(blob,name){
+  clearErr();setBtn('busy');
+  if(lastBlobUrl)URL.revokeObjectURL(lastBlobUrl);
+  lastBlobUrl=URL.createObjectURL(blob);
+  try{
+    const fd=new FormData();fd.append('audio',blob,name);
+    const r=await fetch('/api/identify?lang='+lang,{method:'POST',body:fd});
+    const j=await r.json();
+    if(!r.ok)throw new Error(j.error||'gagal');
+    render(j);
+  }catch(e){showErr(T().errFail(e.message));}
+  finally{setBtn('idle');}
+}
+
+function esc(s){return String(s).replace(/[&<>"']/g,
+  c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function render(j){
+  const box=document.getElementById('res'),list=document.getElementById('list');
+  box.style.display='block';list.innerHTML='';
+
+  // timeline: top detection per 3s chunk
+  const strip=document.getElementById('strip'),tl=document.getElementById('tl');
+  strip.innerHTML='';
+  if(j.chunks.length>1){
+    tl.style.display='block';
+    for(const c of j.chunks){
+      const d=document.createElement('div');
+      const top=c.predictions[0];
+      d.className='seg'+(top?' hit':'');
+      d.title=c.start+'–'+c.end+' dtk'+(top?': '+top.common+' ('+Math.round(top.confidence*100)+'%)':'');
+      d.innerHTML='<span>'+(top?esc(initials(top.common)):c.start+'s')+'</span>';
+      strip.appendChild(d);
+    }
+  }else tl.style.display='none';
+
+  if(!j.summary.length){
+    list.innerHTML='<div class="card">'+esc(T().noBird)+'</div>';
+  }
+  j.summary.slice(0,8).forEach((s,i)=>{
+    const pct=Math.round(s.confidence*100);
+    const d=document.createElement('div');d.className='sp';
+    d.innerHTML=
+      '<div class="rank">'+(i+1)+'</div><div class="body">'+
+      '<div class="nm">'+esc(s.common)+'</div>'+
+      '<div class="sci">'+esc(s.scientific)+'</div>'+
+      '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
+      '<div class="meta">'+T().cardMeta(pct,s.at)+'</div>'+
+      '</div>';
+    list.appendChild(d);
+  });
+
+  const pl=document.getElementById('player');
+  pl.src=lastBlobUrl;pl.style.display='block';
+  document.getElementById('playCap').style.display='block';
+  document.getElementById('sumMeta').textContent=
+    T().sumMeta(esc(j.file),j.duration,j.chunks.length);
+  box.scrollIntoView({behavior:'smooth'});
+}
+function initials(name){
+  return name.split(/[\s-]+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+}
+setLang(lang);
+</script>
+</body>
+</html>
