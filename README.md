@@ -45,7 +45,7 @@ audio file ──▶ ffmpeg (decode → 48 kHz mono)
            ──▶ 3-second chunks (zero-padded tail)
            ──▶ BirdNET v2.4 TFLite fp16, via LiteRT (on-device)
            ──▶ flat sigmoid (same activation BirdNET-Analyzer uses)
-           ──▶ top-N species per chunk, English/Indonesian common names
+           ──▶ top-N species per chunk, English/Indonesian common names ──▶ × location likelihood (optional)
 ```
 
 The preprocessing and activation math mirror BirdNET-Analyzer v2.4 exactly
@@ -56,10 +56,11 @@ reference implementation.
 
 | Path | What |
 |---|---|
-| `kicau/identify.py` | Model loading, chunking, inference, EN/ID labels |
+| `kicau/identify.py` | Model loading, chunking, inference, EN/ID labels, location filter |
+| `kicau/location.py` | BirdNET meta-model: (lat, lon, week) → per-species occurrence |
 | `kicau/audio.py` | ffmpeg-based decode/resample |
 | `kicau/server.py` | stdlib-only HTTP server + `/api/identify` |
-| `kicau/labels_id.txt` | 6,522 species labels (Indonesian, BirdNET team) |
+| `kicau/labels_id.txt` | 6,522 species labels (BirdNET team; 1,227 with Indonesian names, rest fall back to English) |
 | `kicau/labels_en.txt` | 6,522 species labels (English, BirdNET team) |
 | `web/index.html` | Single-file offline UI, no CDN |
 | `scripts/download_model.py` | One-time weight download |

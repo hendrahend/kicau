@@ -90,6 +90,12 @@ class Handler(BaseHTTPRequestHandler):
         lang = parse_qs(parsed.query).get("lang", ["en"])[0]
         if lang not in ("en", "id"):
             lang = "en"
+        qs = parse_qs(parsed.query)
+        try:
+            lat = float(qs["lat"][0]) if "lat" in qs else None
+            lon = float(qs["lon"][0]) if "lon" in qs else None
+        except ValueError:
+            lat, lon = None, None
         length = int(self.headers.get("Content-Length", 0))
         if length <= 0 or length > MAX_UPLOAD_BYTES:
             self._json({"error": "empty or too large upload (max 50 MB)"}, status=400)
@@ -105,7 +111,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             tmp.write(data)
             tmp.close()
-            result = get_identifier().identify_file(tmp.name, lang=lang)
+            result = get_identifier().identify_file(tmp.name, lang=lang,
+                                                       lat=lat, lon=lon)
             result["file"] = filename
             result["lang"] = lang
             self._json(result)

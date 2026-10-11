@@ -59,6 +59,11 @@ class BirdIdentifier:
         assert len(self.labels) == NUM_SPECIES, (
             f"expected {NUM_SPECIES} labels, got {len(self.labels)}"
         )
+        # Location filter model sits next to the audio model; loaded lazily.
+        self._meta_path = os.path.join(
+            os.path.dirname(os.path.abspath(model_path)), "meta-model.tflite"
+        )
+        self._loc_filter = None
         # Load the sibling language set when present (labels_id.txt <-> labels_en.txt).
         self.label_sets = {}
         label_dir = os.path.dirname(os.path.abspath(labels_path))
@@ -76,18 +81,35 @@ class BirdIdentifier:
         logits = self.interpreter.get_tensor(self.output_index)[0]
         return flat_sigmoid(logits).astype(np.float64)
 
+    def location_filter(self):
+        """Lazily load BirdNET's location model (lat, lon, week -> species probs)."""
+        if self._loc_filter is None:
+            from .location import LocationFilter
+
+            self._loc_filter = LocationFilter(self._meta_path)
+        return self._loc_filter
+
     def identify_file(self, path: str, top_n: int = 3, min_confidence: float = 0.1,
-                      lang: str = "en"):
+                      lang: str = "en", lat: float | None = None,
+                      lon: float | None = None, week: int | None = None):
         """Identify birds in an audio file. Returns per-chunk detections.
 
         lang picks the species-name language: "en" (default) or "id".
+        When lat/lon are given, each acoustic confidence is multiplied by the
+        species' local occurrence probability, so birds that merely sound
+        similar but don't live here get demoted.
         """
         labels = self.label_sets.get(lang, self.label_sets.get(self.default_lang,
                                                                 self.labels))
+        loc_probs = None
+        if lat is not None and lon is not None:
+            loc_probs = self.location_filter().predict(lat, lon, week)
         sig = load_audio(path)
         chunks = []
         for start, end, chunk in chunk_signal(sig):
             conf = self.predict_chunk(chunk)
+            if loc_probs is not None:
+                conf = conf * loc_probs
             top = np.argsort(conf)[::-1][:top_n]
             preds = []
             for i in top:
@@ -108,6 +130,7 @@ class BirdIdentifier:
             "duration": round(sig.shape[0] / SAMPLE_RATE, 2),
             "chunks": chunks,
             "summary": summarize(chunks),
+            "location": {"lat": lat, "lon": lon} if loc_probs is not None else None,
         }
 
     def close(self):
@@ -142,12 +165,14 @@ def main():
     ap.add_argument("--min-confidence", type=float, default=0.1)
     ap.add_argument("--lang", default="en", choices=("en", "id"),
                     help="species-name language")
+    ap.add_argument("--lat", type=float, default=None, help="recording latitude")
+    ap.add_argument("--lon", type=float, default=None, help="recording longitude")
     args = ap.parse_args()
 
     ident = BirdIdentifier(args.model, args.labels)
     try:
         print(json.dumps(ident.identify_file(args.audio, args.top_n, args.min_confidence,
-                                             lang=args.lang),
+                                             lang=args.lang, lat=args.lat, lon=args.lon),
                          ensure_ascii=False, indent=2))
     finally:
         ident.close()

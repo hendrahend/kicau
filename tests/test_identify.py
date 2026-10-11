@@ -68,3 +68,37 @@ def test_full_pipeline(tmp_path):
             assert s["scientific"] and s["common"]
     finally:
         ident.close()
+
+
+META_MODEL = os.path.join(BASE, "model", "meta-model.tflite")
+requires_meta = pytest.mark.skipif(not os.path.exists(META_MODEL), reason="meta model not downloaded")
+
+
+@requires_meta
+def test_location_filter_shape_and_jakarta():
+    from kicau.location import LocationFilter
+
+    lf = LocationFilter(META_MODEL)
+    probs = lf.predict(-6.2, 106.8, week=41)  # Jakarta, October
+    assert probs.shape == (6522,)
+    assert probs.min() >= 0.0 and probs.max() <= 1.0
+    labels = load_labels(LABELS)
+    idx = next(i for i, (sci, _) in enumerate(labels) if sci == "Passer montanus")
+    assert probs[idx] > 0.9, "Eurasian Tree Sparrow should be very likely in Jakarta"
+    # ...and very unlikely in Berlin
+    probs_berlin = lf.predict(52.5, 13.4, week=41)
+    assert probs_berlin[idx] < probs[idx]
+
+
+@requires_meta
+def test_identify_with_location(tmp_path):
+    wav = str(tmp_path / "chirp.wav")
+    make_chirp_wav(wav)
+    ident = BirdIdentifier(MODEL, LABELS)
+    try:
+        result = ident.identify_file(wav, lat=-6.2, lon=106.8)
+        assert result["location"] == {"lat": -6.2, "lon": 106.8}
+        for s in result["summary"]:
+            assert 0.0 <= s["confidence"] <= 1.0
+    finally:
+        ident.close()

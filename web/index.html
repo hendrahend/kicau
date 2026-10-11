@@ -77,6 +77,12 @@
   .foot{margin-top:30px;font-size:13px;color:var(--dim);line-height:1.7;
         border-top:1px solid var(--line);padding-top:20px}
   .foot b{color:var(--ink)}
+  .locbtn{margin-top:12px;display:inline-flex;align-items:center;gap:8px;
+    background:transparent;border:1px solid var(--line);color:var(--dim);
+    font-size:13px;font-weight:600;padding:9px 14px;border-radius:999px;cursor:pointer}
+  .locbtn svg{width:15px;height:15px;fill:currentColor}
+  .locbtn.on{border-color:var(--acc);color:var(--acc)}
+  .lochint{font-size:12.5px;color:var(--acc);margin-top:8px}
   .lang{margin-left:auto;display:flex;gap:6px;flex:none}
   .lang button{background:var(--card);border:1px solid var(--line);color:var(--dim);
     font-size:12px;font-weight:700;padding:7px 11px;border-radius:999px;cursor:pointer}
@@ -117,6 +123,11 @@
     </button>
     <div id="timer"></div>
     <p class="hint" data-i18n="hintRec">Rekam 5&ndash;30 detik dekat sumber suara. Pagi hari, jauh dari jalan raya = hasil terbaik.</p>
+    <button class="locbtn" id="locBtn" onclick="toggleLoc()">
+      <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
+      <span id="locLbl" data-i18n="useLoc">Use my location</span>
+    </button>
+    <p class="lochint" id="locHint" style="display:none" data-i18n="locHint">Location filter on: unlikely local birds are demoted.</p>
   </div>
 
   <div class="card" id="paneUp" style="display:none">
@@ -171,6 +182,9 @@ en:{
   footModel:'Model: BirdNET v2.4 (open weights, 6,522 species) by Cornell Lab of Ornithology & TU Chemnitz. App code: MIT.',
   errMic:e=>'Can\u2019t access microphone: '+e,
   errFail:e=>'Failed: '+e,
+  useLoc:'Use my location',
+  locHint:'Location filter on: birds unlikely here are demoted.',
+  locErr:'Could not get your location.',
 },
 id:{
   title:'Kicau \u2014 Pengenal Suara Burung Offline',
@@ -191,6 +205,9 @@ id:{
   footModel:'Model: BirdNET v2.4 (open weights, 6.522 spesies) oleh Cornell Lab of Ornithology & TU Chemnitz. Kode aplikasi: MIT.',
   errMic:e=>'Tidak bisa akses mikrofon: '+e,
   errFail:e=>'Gagal: '+e,
+  useLoc:'Pakai lokasiku',
+  locHint:'Filter lokasi aktif: burung yang tidak mungkin ada di sini diturunkan.',
+  locErr:'Tidak bisa mendapatkan lokasimu.',
 }};
 const T=()=>STR[lang];
 
@@ -218,6 +235,23 @@ function showTab(t){
 }
 function showErr(m){const e=document.getElementById('err');e.style.display='block';e.textContent=m;}
 function clearErr(){document.getElementById('err').style.display='none';}
+let myLat=null,myLon=null;
+function toggleLoc(){
+  if(myLat!==null){ // turn off
+    myLat=myLon=null;
+    document.getElementById('locBtn').classList.remove('on');
+    document.getElementById('locLbl').textContent=T().useLoc;
+    document.getElementById('locHint').style.display='none';
+    return;
+  }
+  if(!navigator.geolocation){showErr(T().locErr);return;}
+  navigator.geolocation.getCurrentPosition(p=>{
+    myLat=+p.coords.latitude.toFixed(4);myLon=+p.coords.longitude.toFixed(4);
+    document.getElementById('locBtn').classList.add('on');
+    document.getElementById('locHint').style.display='block';
+    clearErr();
+  },()=>showErr(T().locErr),{timeout:10000});
+}
 function setBtn(mode){ // mode: idle | busy | stop
   const b=document.getElementById('recBtn'),l=document.getElementById('recLbl');
   l.textContent=mode==='stop'?T().recStop:mode==='busy'?T().recBusy:T().recStart;
@@ -254,7 +288,7 @@ async function uploadBlob(blob,name){
   lastBlobUrl=URL.createObjectURL(blob);
   try{
     const fd=new FormData();fd.append('audio',blob,name);
-    const r=await fetch('/api/identify?lang='+lang,{method:'POST',body:fd});
+    const r=await fetch('/api/identify?lang='+lang+(myLat!==null?`&lat=${myLat}&lon=${myLon}`:''),{method:'POST',body:fd});
     const j=await r.json();
     if(!r.ok)throw new Error(j.error||'gagal');
     render(j);
